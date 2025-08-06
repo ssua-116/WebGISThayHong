@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cơ sở dữ liệu quan trắc</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style> 
+    #map { height: 100vh; margin: 0; padding: 0; }
+    body { margin: 0; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+  var map = L.map('map').setView([16, 112], 5);
+
+  // Sử dụng bản đồ nền MapTiler Hybrid
+  L.tileLayer('https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=XcIBmv3W3LCZxfw86aQC', {
+    attribution: '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; OpenStreetMap contributors',
+    maxZoom: 18
+  }).addTo(map);
+
+  // Thêm lớp GeoJSON Việt Nam
+  fetch("shpvn.geojson")
+    .then(response => response.json())
+    .then(data => {
+      var geojsonLayer = L.geoJSON(data, {
+        style: {
+          color: "blue",
+          weight: 2,
+          fillOpacity: 0.1
+        }
+      }).addTo(map);
+      map.fitBounds(geojsonLayer.getBounds());
+    })
+    .catch(error => {
+      console.error("Lỗi khi tải GeoJSON:", error);
+      
+    });
+    
+// ...existing code...
+
+// Tạo nhóm marker cluster
+var markers = L.markerClusterGroup();
+
+// Đọc file CSV và vẽ marker lên nhóm cluster
+fetch('caodokhoangcachbien.csv')
+  .then(response => response.text())
+  .then(csvText => {
+    Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        results.data.forEach(function(row) {
+          if (row.final_lat && row.final_lon) {
+            var marker = L.marker([parseFloat(row.final_lat), parseFloat(row.final_lon)]);
+            marker.bindPopup(
+              `<b>ID:</b> ${row.ID}<br>
+               <b>Tên huyện:</b> ${row.Vietnames_names}<br>
+               <b>Tỉnh:</b> ${row.Province}<br>
+               <b>Độ cao:</b> ${row.elevation !== undefined && row.elevation !== "" ? row.elevation + " m" : "Không có dữ liệu"}<br>
+               <b>Khoảng cách đến bờ biển:</b> ${row.distance_to_coast_km !== undefined && row.distance_to_coast_km !== "" ? row.distance_to_coast_km + " km" : "Không có dữ liệu"}`
+            );
+            markers.addLayer(marker);
+          }
+        });
+        map.addLayer(markers);
+      }
+    });
+  });
+// ...existing code...
+</script>
+</body>
+</html>
